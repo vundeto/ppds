@@ -19,12 +19,11 @@ import org.ppds.core.PlanNode;
 import org.ppds.core.PlanNode.NodeType;
 import org.ppds.core.QueryProcessor;
 import org.ppds.core.Record;
-
+import org.apache.commons.lang3.tuple.Pair;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.lang.Pair;
 
 public class SpeedTest {
 	private static final int ITERATIONS = 5;

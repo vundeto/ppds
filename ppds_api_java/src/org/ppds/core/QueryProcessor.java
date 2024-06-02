@@ -49,6 +49,7 @@ public abstract class QueryProcessor {
 			//copy record because iterators might reuse
 			ret.add(new Record(r));
 		}
+		System.out.println(ret);
 		iter.close();
 		return ret;
 	}

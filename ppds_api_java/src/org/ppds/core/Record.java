@@ -14,6 +14,8 @@ limitations under the License.
 
 package org.ppds.core;
 
+import java.util.Arrays;
+
 public class Record {
 	public enum DataType {
 		INT32,
@@ -53,5 +55,13 @@ public class Record {
 	
 	public DataType getSchema(int index) {
 		return _schema[index];
+	}
+
+	@Override
+	public String toString() {
+		return "Record{" +
+				"_schema=" + Arrays.toString(_schema) +
+				", _data=" + Arrays.toString(_data) +
+				'}';
 	}
 }
