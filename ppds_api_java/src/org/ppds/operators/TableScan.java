@@ -14,11 +14,9 @@ public class TableScan implements ONCIterator {
 
     final char separator = '|';
 
-
     String path;
     BufferedReader reader;
     List<Record.DataType> dataTypes;
-    boolean eof = false;
 
     public TableScan(String path) throws FileNotFoundException {
         this.path = path;
@@ -66,7 +64,6 @@ public class TableScan implements ONCIterator {
                 }else token += c;
             }
         }catch(Exception e){
-            e.printStackTrace();
             return null;
         }
         return record;
@@ -77,9 +74,7 @@ public class TableScan implements ONCIterator {
         try {
             reader.close();
         }catch(Exception e){
-
         }
-        System.out.println("closing");
     }
 
     public void parseData(Record record, int index, String token) {
@@ -91,7 +86,7 @@ public class TableScan implements ONCIterator {
 
     }
 
-    public Record.DataType guessDataType(String token) {
+    public static Record.DataType guessDataType(String token) {
         try {
             Integer.parseInt(token);
             return Record.DataType.INT32;
