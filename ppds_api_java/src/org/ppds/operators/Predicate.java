@@ -20,12 +20,12 @@ public class Predicate implements ONCIterator {
 
     @Override
     public void open() {
-        children[0].open();
+        children[children.length-1].open();
     }
 
     @Override
     public Record next() {
-        var record = children[0].next();
+        var record = children[children.length-1].next();
         if(record == null) return null;
         if(parseData(record) != null) return new Record(record);
         else return next();
@@ -33,23 +33,22 @@ public class Predicate implements ONCIterator {
 
     @Override
     public void close() {
-        children[0].close();
+        children[children.length-1].close();
     }
 
     public Record parseData(Record record) {
-        var copy = new Record(record);
         if (record.getSchema()[column_id].equals(Record.DataType.INT32)) {
             var value_ = (int) record.get(column_id);
             var literal_ = Integer.parseInt(literal);
-            if (compareNums(value_, literal_)) return record;
+            if (compareNums(value_, literal_)) return new Record(record);
         } else if (record.getSchema()[column_id].equals(Record.DataType.FP32)) {
             var value_ = (float) record.get(column_id);
             var literal_ = Float.parseFloat(literal);
-            if (compareNums(value_, literal_)) return record;
+            if (compareNums(value_, literal_))  return new Record(record);
         } else {
             var value_ = (String) record.get(column_id);
             var literal_ = literal;
-            if (compareStrings(value_, literal_)) return record;
+            if (compareStrings(value_, literal_))  return new Record(record);
         }
         return null;
     }
