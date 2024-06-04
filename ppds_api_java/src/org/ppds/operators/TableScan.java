@@ -34,7 +34,7 @@ public class TableScan implements ONCIterator {
             var line = br.readLine().toCharArray();
             var token = "";
             for (char c : line) {
-                if (c == separator) {
+                if (c == separator || c == line[line.length - 1]) {
                     var type = guessDataType(token);
                     dataTypes.add(type);
                     token = "";
@@ -57,7 +57,7 @@ public class TableScan implements ONCIterator {
             var line = reader.readLine().toCharArray();
             var token = "";
             for (char c : line) {
-                if (c == separator) {
+                if (c == separator ||c == line[line.length - 1]) {
                     parseData(record, columnIndex, token);
                     token = "";
                     columnIndex++;
