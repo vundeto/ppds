@@ -3,6 +3,8 @@ package org.ppds.core;
 import org.ppds.operators.Predicate;
 import org.ppds.operators.Projection;
 import org.ppds.operators.TableScan;
+import org.ppds.operators.EquiJoin;
+
 
 import java.util.Arrays;
 import java.util.List;
@@ -24,7 +26,13 @@ public class Compiler extends QueryProcessor {
             } else if (node._type.equals(PlanNode.NodeType.Projection)) {
                 var it = getIterators(node._inputs);
                 return new Projection(node._params, it);
-            }else return null;
+            }else if (node._type.equals(PlanNode.NodeType.EquiJoin)) {
+                var inputs = node.getInputs();
+                var leftInput = compileQuery(inputs[0]);
+                var rightInput = compileQuery(inputs[1]);
+                var joinParams = node.getParameters();
+                return new EquiJoin(joinParams.get("left_column"), joinParams.get("right_column"), leftInput, rightInput);
+            } else return null;
         }catch(Exception e){
             return null;
         }
@@ -40,6 +48,9 @@ public class Compiler extends QueryProcessor {
                     Map.of("column_id", "2", "condition", "=", "literal", "abc"), new PlanNode[]{scan});
             PlanNode proj = new PlanNode(PlanNode.NodeType.Projection,
                     Map.of("column_ids", "0,1"), new PlanNode[]{scan, pred});
+            PlanNode EquiJoin = new PlanNode(PlanNode.NodeType.EquiJoin,
+                    Map.of("left_column", "0", "right_column", "0"), new PlanNode[]{scan});
+
             Compiler c = new Compiler();
             c.executeQuery(proj);
         }
