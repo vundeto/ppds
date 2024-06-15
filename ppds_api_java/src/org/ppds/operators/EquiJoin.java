@@ -2,7 +2,11 @@ package org.ppds.operators;
 
 import org.ppds.core.ONCIterator;
 import org.ppds.core.Record;
-import java.util.*;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class EquiJoin implements ONCIterator {
     private ONCIterator left_iterator;
@@ -43,8 +47,9 @@ public class EquiJoin implements ONCIterator {
             while ((current = left_iterator.next()) != null) {
                 Object key = current.get(left_column);
                 if (hash_table.containsKey(key)) {
-                    current_right_records = hash_table.get(key);
-                    return createJoined( current_right_records.remove(0));
+                    current_right_records = new ArrayList<>(hash_table.get(key));
+                    if (current_right_records.size() == 0) return null;
+                    else return createJoined(current_right_records.remove(0));
                 }
             }
             return null;
@@ -57,28 +62,39 @@ public class EquiJoin implements ONCIterator {
             }
         }
     }
-    public Record createJoined(Record left){
-        if(schema == null)getSchema(left);
-        var record = new Record(schema);
-        for (int i = 0; i < left.getSchema().length; i++) {
-            record.set(i, left.get(i));
-        }
 
+    public Record createJoined(Record right) {
+        if (schema == null) getSchema(right);
+        var record = new Record(schema);
         for (int i = 0; i < current.getSchema().length; i++) {
-            if(i!=right_column)record.set(i + left.getSchema().length-1, current.get(i));
+            record.set(i, current.get(i));
+        }
+        var index = current.getSchema().length - 1;
+        for (int i = 0; i < right.getSchema().length; i++) {
+            if (i != right_column) {
+                index++;
+                record.set(index, current.get(i));
+            }
         }
         return record;
     }
-    public void getSchema(Record left){
-        var schema_ = new Record.DataType[left.getSchema().length + current.getSchema().length-1];
-        for (int i = 0; i < left.getSchema().length; i++) {
-            schema_[i] = left.getSchema()[i];
-        }
+
+    public void getSchema(Record right) {
+        var schema_ = new Record.DataType[right.getSchema().length + current.getSchema().length - 1];
         for (int i = 0; i < current.getSchema().length; i++) {
-            if(i!=right_column)schema_[i + left.getSchema().length-1] = current.getSchema()[i];
+            schema_[i] = current.getSchema()[i];
         }
+        var index = current.getSchema().length - 1;
+        for (int i = 0; i < right.getSchema().length; i++) {
+            if (i != right_column) {
+                index++;
+                schema_[index] = right.getSchema()[i];
+            }
+        }
+
         schema = schema_;
     }
+
     @Override
     public void close() {
         left_iterator.close();

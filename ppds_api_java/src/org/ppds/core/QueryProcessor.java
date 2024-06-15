@@ -48,8 +48,9 @@ public abstract class QueryProcessor {
 		while( (r = iter.next()) != null ) {
 			//copy record because iterators might reuse
 			ret.add(new Record(r));
+			System.out.println(r);
 		}
-		System.out.println(ret);
+
 		iter.close();
 		return ret;
 	}

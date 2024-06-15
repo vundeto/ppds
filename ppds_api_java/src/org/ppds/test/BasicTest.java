@@ -31,17 +31,17 @@ public class BasicTest {
 	@Test
 	public void runThrough() {
 		PlanNode scan = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "basic_test/table_a.tbl"), null);
+			Map.of("file_path", "ppds_api_java/data/basic_test/table_a.tbl"), null);
 		PlanNode pred = new PlanNode(NodeType.Predicate,
 			Map.of("column_id", "0", "condition", ">", "literal", "1"), new PlanNode[]{scan});
 		PlanNode scan2 = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "basic_test/table_b.tbl"), null);
+			Map.of("file_path", "ppds_api_java/data/basic_test/table_b.tbl"), null);
 		PlanNode proj = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "0"), new PlanNode[]{scan2});
 		PlanNode join = new PlanNode(NodeType.EquiJoin,
 			Map.of("left_column_id", "1", "right_column_id", "0"), new PlanNode[]{pred, proj});
 		PlanNode groupBy = new PlanNode(NodeType.GroupBy,
-			Map.of("group_by_column_id", "2", "aggregate_column_id", "0", "aggregate_type", "max"),
+			Map.of("group_by_column_id", "2", "aggregate_column_id", "0", "AggrType", "max"),
 			new PlanNode[]{join});
 
 		List<Record> results = AQueryProcessorFactory.createQueryProcessor().executeQuery(groupBy);
