@@ -49,7 +49,7 @@ public class Compiler extends QueryProcessor {
             PlanNode join = new PlanNode(PlanNode.NodeType.EquiJoin,
                     Map.of("left_column_id", "1", "right_column_id", "0"), new PlanNode[]{pred, proj});
             PlanNode groupBy = new PlanNode(PlanNode.NodeType.GroupBy,
-                    Map.of("group_by_column_id", "2", "aggregate_column_id", "0", "AggrType", "max"),
+                    Map.of("group_by_column_id", "2", "aggregate_column_id", "0", "AggrType", "sum"),
                     new PlanNode[]{join});
 
 
