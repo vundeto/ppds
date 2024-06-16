@@ -100,19 +100,13 @@ public class GroupBy implements ONCIterator {
     }
 
     public AggrType getType(String str) {
-        switch (str) {
-            case "sum":
-                return AggrType.SUM;
-            case "avg":
-                return AggrType.AVG;
-            case "count":
-                return AggrType.COUNT;
-            case "max":
-                return AggrType.MAX;
-            case "min":
-                return AggrType.MIN;
-            default:
-                return null;
-        }
+        return switch (str) {
+            case "sum" -> AggrType.SUM;
+            case "avg" -> AggrType.AVG;
+            case "count" -> AggrType.COUNT;
+            case "max" -> AggrType.MAX;
+            case "min" -> AggrType.MIN;
+            default -> null;
+        };
     }
 }
