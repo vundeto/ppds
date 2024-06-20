@@ -3,9 +3,7 @@ package org.ppds.core;
 import org.ppds.operators.*;
 
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Compiler extends QueryProcessor {
     @Override
@@ -36,27 +34,38 @@ public class Compiler extends QueryProcessor {
     public ONCIterator[] getIterators(PlanNode[] inputs){
         return Arrays.stream(inputs).map(this::compileQuery).toArray(ONCIterator[]::new);
     }
+    public static PlanNode q1_1LQP(String param1, String param2) {
+        PlanNode getLO = new PlanNode(PlanNode.NodeType.TableScan,
+                Map.of("file_path", "ppds_api_java/data/benchmark/lineorder.tbl"), null);
+        PlanNode projLO = new PlanNode(PlanNode.NodeType.Projection,
+                Map.of("column_ids", "5,8,11,13"), new PlanNode[]{getLO});
+        PlanNode predLO1 = new PlanNode(PlanNode.NodeType.Predicate,
+                Map.of("column_id", "2", "condition", ">=", "literal", param1), new PlanNode[]{projLO});
+        PlanNode predLO2 = new PlanNode(PlanNode.NodeType.Predicate,
+                Map.of("column_id", "2", "condition", "<=", "literal", param2), new PlanNode[]{predLO1});
+        PlanNode predLO3 = new PlanNode(PlanNode.NodeType.Predicate,
+                Map.of("column_id", "1", "condition", ">", "literal", "25"), new PlanNode[]{predLO2});
+
+
+        PlanNode getD = new PlanNode(PlanNode.NodeType.TableScan,
+                Map.of("file_path", "ppds_api_java/data/benchmark/date.tbl"), null);
+        PlanNode projD = new PlanNode(PlanNode.NodeType.Projection,
+                Map.of("column_ids", "0,4"), new PlanNode[]{getD});
+        PlanNode predD1 = new PlanNode(PlanNode.NodeType.Predicate,
+                Map.of("column_id", "1", "condition", "=", "literal", "1993"), new PlanNode[]{projD});
+        PlanNode join = new PlanNode(PlanNode.NodeType.EquiJoin,
+                Map.of("left_column_id", "0", "right_column_id", "0"), new PlanNode[]{predLO3, predD1});
+        PlanNode groupBy = new PlanNode(PlanNode.NodeType.GroupBy,
+                Map.of("aggregate_column_id", "3", "AggrType", "avg"), new PlanNode[]{join});
+
+        return groupBy;
+    }
 
         public static void main (String[]args){
-            PlanNode scan = new PlanNode(PlanNode.NodeType.TableScan,
-                    Map.of("file_path", "ppds_api_java/data/basic_test/table_a.tbl"), null);
-            PlanNode pred = new PlanNode(PlanNode.NodeType.Predicate,
-                    Map.of("column_id", "0", "condition", ">", "literal", "1"), new PlanNode[]{scan});
-            PlanNode scan2 = new PlanNode(PlanNode.NodeType.TableScan,
-                    Map.of("file_path", "ppds_api_java/data/basic_test/table_b.tbl"), null);
-            PlanNode proj = new PlanNode(PlanNode.NodeType.Projection,
-                    Map.of("column_ids", "0"), new PlanNode[]{scan2});
-            PlanNode join = new PlanNode(PlanNode.NodeType.EquiJoin,
-                    Map.of("left_column_id", "1", "right_column_id", "0"), new PlanNode[]{pred, proj});
-            PlanNode groupBy = new PlanNode(PlanNode.NodeType.GroupBy,
-                    Map.of("group_by_column_id", "2", "aggregate_column_id", "0", "AggrType", "sum"),
-                    new PlanNode[]{join});
 
 
             Compiler c = new Compiler();
-            c.executeQuery(pred);
-            c.executeQuery(proj);
-            c.executeQuery(join);
-            c.executeQuery(groupBy);
+            PlanNode node = q1_1LQP("1", "3");
+            c.executeQuery(node);
         }
     }
