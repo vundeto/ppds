@@ -11,8 +11,9 @@ public class GroupBy implements ONCIterator {
     }
 
     AggrType type;
-    Iterator<Object> mapIterator;
+    Iterator<Object> iterator;
     HashMap<Object, List<Object>> map;
+
     int aggr_column_id;
     int gb_column_id;
     ONCIterator[] children;
@@ -20,8 +21,10 @@ public class GroupBy implements ONCIterator {
 
     public GroupBy(Map<String, String> params, ONCIterator[] children_) {
         type = getType(params.get("AggrType"));
-        gb_column_id = Integer.parseInt(params.get("group_by_column_id"));
-        aggr_column_id = Integer.parseInt(params.get("aggregate_column_id"));
+        if (params.containsKey("group_by_column_id")) gb_column_id = Integer.parseInt(params.get("group_by_column_id"));
+        else gb_column_id = -1;
+        if (params.containsKey("aggregate_column_id")) aggr_column_id= Integer.parseInt(params.get("aggregate_column_id"));
+        else aggr_column_id = -1;
         children = children_;
         map = null;
     }
@@ -29,26 +32,48 @@ public class GroupBy implements ONCIterator {
     @Override
     public void open() {
         children[children.length - 1].open();
-
-
     }
 
     @Override
     public Record next() {
+        if(gb_column_id == -1){
+            if(map == null)aggregateOnly();
+            var aggregate = map.keySet().iterator().next();
+            if (!iterator.hasNext()) return null;
+            var record = new Record((Record)iterator.next());
+            if(aggregate==null)return record;
+            else record.set(aggr_column_id, aggregate);
+            return record;
+        }
         if (map == null) executeGroupBy();
         if (map.isEmpty()) return null;
-        if(!mapIterator.hasNext())return null;
-        var key = mapIterator.next();
-        if (key == null) return null;
+        if (!iterator.hasNext()) return null;
+        var key = iterator.next();
         var record = new Record(schema);
         record.set(0, key);
-        record.set(1, aggregate(map.get(key)));
+        record.set(1, aggregate(map.get(key), schema[1]));
         return record;
     }
 
     @Override
     public void close() {
         children[children.length - 1].close();
+    }
+    public void aggregateOnly(){
+        List<Object> records = new ArrayList<>();
+        List<Object> columns = new ArrayList<>();
+        Record record;
+        while ((record = children[children.length - 1].next()) != null) {
+            records.add(record);
+            columns.add(record.get(aggr_column_id));
+        }
+        System.out.println(records);
+        System.out.println(columns);
+        var r = (Record) records.get(0);
+        var aggregate = aggregate(columns, r.getSchema(aggr_column_id));
+        map = new HashMap<>();
+        map.put(aggregate, records);
+        iterator = map.get(aggregate).iterator();
     }
 
     public void executeGroupBy() {
@@ -64,8 +89,8 @@ public class GroupBy implements ONCIterator {
             } else {
                 map.get(key).add(value);
             }
-        mapIterator = map.keySet().iterator();
         }
+        iterator = map.keySet().iterator();
     }
 
     private Record.DataType[] generateSchema(Record record) {
@@ -78,8 +103,9 @@ public class GroupBy implements ONCIterator {
         return schema;
     }
 
-    private Object aggregate(List<Object> values) {
-        if (schema[1] == Record.DataType.FP32) {
+
+    private Object aggregate(List<Object> values, Record.DataType dataType) {
+        if (dataType == Record.DataType.FP32) {
             return switch (type) {
                 case SUM -> values.stream().map(o -> (float) o).reduce((float) 0, Float::sum);
                 case AVG -> values.stream().map(o -> (float) o).reduce((float) 0, Float::sum) / values.size();
@@ -87,7 +113,7 @@ public class GroupBy implements ONCIterator {
                 case MAX -> values.stream().map(o -> (float) o).max(Float::compareTo).get();
                 case MIN -> values.stream().map(o -> (float) o).min(Float::compareTo).get();
             };
-        } else if (schema[1] == Record.DataType.INT32) {
+        } else if (dataType == Record.DataType.INT32) {
             return switch (type) {
                 case SUM -> values.stream().map(o -> (int) o).reduce(0, Integer::sum);
                 case AVG -> values.stream().map(o -> (int) o).reduce(0, Integer::sum) / values.size();
@@ -96,7 +122,6 @@ public class GroupBy implements ONCIterator {
                 case MIN -> values.stream().map(o -> (int) o).min(Integer::compareTo).get();
             };
         } else return null;
-
     }
 
     public AggrType getType(String str) {
