@@ -8,17 +8,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class EquiJoin implements ONCIterator {
-    private ONCIterator left_iterator;
-    private ONCIterator right_iterator;
-    private int left_column;
-    private int right_column;
-    private Map<Object, List<Record>> hash_table;
-    private List<Record> current_right_records;
-    private Record current;
-    private Record.DataType[] schema;
+public class HashJoin implements ONCIterator {
+    ONCIterator left_iterator;
+    ONCIterator right_iterator;
+    int left_column;
+    int right_column;
+    Map<Object, List<Record>> hash_table;
+    List<Record> current_right_records;
+    Record current;
+    Record.DataType[] schema;
 
-    public EquiJoin(Map<String, String> params, ONCIterator[] inputs) {
+    public HashJoin(Map<String, String> params, ONCIterator[] inputs) {
         this.left_column = Integer.parseInt(params.get("left_column_id"));
         this.right_column = Integer.parseInt(params.get("right_column_id"));
         this.left_iterator = inputs[0];
@@ -48,7 +48,7 @@ public class EquiJoin implements ONCIterator {
                 Object key = current.get(left_column);
                 if (hash_table.containsKey(key)) {
                     current_right_records = new ArrayList<>(hash_table.get(key));
-                    if (current_right_records.size() == 0) return null;
+                    if (current_right_records.isEmpty()) return null;
                     else return createJoined(current_right_records.remove(0));
                 }
             }
@@ -73,10 +73,18 @@ public class EquiJoin implements ONCIterator {
         for (int i = 0; i < right.getSchema().length; i++) {
             if (i != right_column) {
                 index++;
-                record.set(index, current.get(i));
+                record.set(index, right.get(i));
             }
         }
         return record;
+    }
+
+    @Override
+    public void close() {
+        left_iterator.close();
+        right_iterator.close();
+        hash_table.clear();
+        current_right_records = null;
     }
 
     public void getSchema(Record right) {
@@ -90,17 +98,8 @@ public class EquiJoin implements ONCIterator {
                 index++;
                 schema_[index] = right.getSchema()[i];
             }
+
+            schema = schema_;
         }
-
-        schema = schema_;
-    }
-
-    @Override
-    public void close() {
-        left_iterator.close();
-        right_iterator.close();
-        hash_table.clear();
-        current_right_records = null;
     }
 }
-

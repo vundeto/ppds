@@ -20,7 +20,7 @@ public class GroupBy implements ONCIterator {
     Record.DataType[] schema;
 
     public GroupBy(Map<String, String> params, ONCIterator[] children_) {
-        type = getType(params.get("AggrType"));
+        type = getType(params.get("aggregate_type"));
         if (params.containsKey("group_by_column_id")) gb_column_id = Integer.parseInt(params.get("group_by_column_id"));
         else gb_column_id = -1;
         if (params.containsKey("aggregate_column_id")) aggr_column_id= Integer.parseInt(params.get("aggregate_column_id"));
@@ -67,8 +67,6 @@ public class GroupBy implements ONCIterator {
             records.add(record);
             columns.add(record.get(aggr_column_id));
         }
-        System.out.println(records);
-        System.out.println(columns);
         var r = (Record) records.get(0);
         var aggregate = aggregate(columns, r.getSchema(aggr_column_id));
         map = new HashMap<>();
@@ -82,7 +80,7 @@ public class GroupBy implements ONCIterator {
         while ((record = children[children.length - 1].next()) != null) {
             var key = record.get(gb_column_id);
             var value = record.get(aggr_column_id);
-            if (schema == null) schema = generateSchema(record);
+            if (schema == null) schema = createSchema(record);
             if (!map.containsKey(key)) {
                 map.put(key, new ArrayList<>());
                 map.get(key).add(value);
@@ -93,7 +91,7 @@ public class GroupBy implements ONCIterator {
         iterator = map.keySet().iterator();
     }
 
-    private Record.DataType[] generateSchema(Record record) {
+    private Record.DataType[] createSchema(Record record) {
         var schema = new Record.DataType[2];
         schema[0] = record.getSchema(gb_column_id);
         if (type.equals(AggrType.AVG)) schema[1] = Record.DataType.FP32;

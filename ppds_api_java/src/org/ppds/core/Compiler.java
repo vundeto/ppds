@@ -6,9 +6,17 @@ import org.ppds.operators.*;
 import java.util.*;
 
 public class Compiler extends QueryProcessor {
+    Map<PlanNode, List<Record>> cache = new HashMap<>();
     @Override
     public List<Record> executeQuery(PlanNode node) {
-        return super.executeQuery(node);
+        if(checkCache(node))return cache.get(node);
+        var start = System.currentTimeMillis();
+        var list = super.executeQuery(node);
+        if(node.getType().equals(PlanNode.NodeType.GroupBy) || node.getType().equals(PlanNode.NodeType.EquiJoin))
+            cache.put(node, list);
+        var end = System.currentTimeMillis();
+        System.out.println("Execution time of "+ node.getType() +": "+ (end - start) + "ms" );
+        return list;
     }
 
     @Override
@@ -22,7 +30,7 @@ public class Compiler extends QueryProcessor {
                 var it = getIterators(node._inputs);
                 return new Projection(node._params, it);
             }else if (node._type.equals(PlanNode.NodeType.EquiJoin)) {
-                return new EquiJoin(node._params, getIterators(node._inputs));
+                return new HashJoin(node._params, getIterators(node._inputs));
             } else if (node._type.equals(PlanNode.NodeType.GroupBy)) {
                 return new GroupBy(node._params, getIterators(node._inputs));
             }else return null;
@@ -30,6 +38,7 @@ public class Compiler extends QueryProcessor {
             e.printStackTrace();
             return null;
         }
+
     }
     public ONCIterator[] getIterators(PlanNode[] inputs){
         return Arrays.stream(inputs).map(this::compileQuery).toArray(ONCIterator[]::new);
@@ -56,14 +65,15 @@ public class Compiler extends QueryProcessor {
         PlanNode join = new PlanNode(PlanNode.NodeType.EquiJoin,
                 Map.of("left_column_id", "0", "right_column_id", "0"), new PlanNode[]{predLO3, predD1});
         PlanNode groupBy = new PlanNode(PlanNode.NodeType.GroupBy,
-                Map.of("aggregate_column_id", "3", "AggrType", "avg"), new PlanNode[]{join});
+                Map.of("aggregate_column_id", "3", "aggregate_type", "avg"), new PlanNode[]{join});
 
         return groupBy;
     }
+    private boolean checkCache(PlanNode node){
+        return cache.containsKey(node);
+    }
 
         public static void main (String[]args){
-
-
             Compiler c = new Compiler();
             PlanNode node = q1_1LQP("1", "3");
             c.executeQuery(node);

@@ -35,7 +35,7 @@ public class SpeedTest {
 
 	public static PlanNode q1_1LQP(String param1, String param2) {
 		PlanNode getLO = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "benchmark/lineorder.tbl"), null);
+			Map.of("file_path", "ppds_api_java/data/benchmark/lineorder.tbl"), null);
 		PlanNode projLO = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "5,8,11,13"), new PlanNode[]{getLO});
 		PlanNode predLO1 = new PlanNode(NodeType.Predicate,
@@ -47,7 +47,7 @@ public class SpeedTest {
 
 
 		PlanNode getD = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "benchmark/date.tbl"), null);
+			Map.of("file_path", "ppds_api_java/data/benchmark/date.tbl"), null);
 		PlanNode projD = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "0,4"), new PlanNode[]{getD});
 		PlanNode predD1 = new PlanNode(NodeType.Predicate,
@@ -66,7 +66,7 @@ public class SpeedTest {
 
 	public static PlanNode q1_2LQP(String param1, String param2) {
 		PlanNode getLO = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "benchmark/lineorder.tbl"), null);
+			Map.of("file_path", "ppds_api_java/data/benchmark/lineorder.tbl"), null);
 		PlanNode projLO = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "5,8,11,13"), new PlanNode[]{getLO});
 		PlanNode predLO1 = new PlanNode(NodeType.Predicate,
@@ -79,7 +79,7 @@ public class SpeedTest {
 			Map.of("column_id", "1", "condition", ">", "literal", param2), new PlanNode[]{predLO3});
 
 		PlanNode getD = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "benchmark/date.tbl"), null);
+			Map.of("file_path", "ppds_api_java/data/benchmark/date.tbl"), null);
 		PlanNode projD = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "0,5"), new PlanNode[]{getD});
 		PlanNode predD1 = new PlanNode(NodeType.Predicate,
@@ -97,24 +97,24 @@ public class SpeedTest {
 
 	public static PlanNode q2_1LQP(String param1) {
 		PlanNode getLO = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "benchmark/lineorder.tbl"), null);
+			Map.of("file_path", "ppds_api_java/data/benchmark/lineorder.tbl"), null);
 		PlanNode projLO = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "3,4,5,12"), new PlanNode[]{getLO});
 
 		PlanNode getD = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "benchmark/date.tbl"), null);
+			Map.of("file_path", "ppds_api_java/data/benchmark/date.tbl"), null);
 		PlanNode projD = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "0,4"), new PlanNode[]{getD});
 
 		PlanNode getP = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "benchmark/part.tbl"), null);
+			Map.of("file_path", "ppds_api_java/data/benchmark/part.tbl"), null);
 		PlanNode projP = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "0,3"), new PlanNode[]{getP});
 		PlanNode predP1 = new PlanNode(NodeType.Predicate,
 			Map.of("column_id", "1", "condition", "=", "literal", param1), new PlanNode[]{projP});
 
 		PlanNode getS = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "benchmark/supplier.tbl"), null);
+			Map.of("file_path", "ppds_api_java/data/benchmark/supplier.tbl"), null);
 		PlanNode projS = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "0,5"), new PlanNode[]{getS});
 		PlanNode predS1 = new PlanNode(NodeType.Predicate,
@@ -138,24 +138,24 @@ public class SpeedTest {
 
 	static PlanNode q2_2LQP(String param1) {
 		PlanNode getLO = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "benchmark/lineorder.tbl"), null);
+			Map.of("file_path", "ppds_api_java/data/benchmark/lineorder.tbl"), null);
 		PlanNode projLO = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "3,4,5,12"), new PlanNode[]{getLO});
 
 		PlanNode getD = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "benchmark/date.tbl"), null);
+			Map.of("file_path", "ppds_api_java/data/benchmark/date.tbl"), null);
 		PlanNode projD = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "0,4"), new PlanNode[]{getD});
 
 		PlanNode getP = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "benchmark/part.tbl"), null);
+			Map.of("file_path", "ppds_api_java/data/benchmark/part.tbl"), null);
 		PlanNode projP = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "0,4"), new PlanNode[]{getP});
 		PlanNode predP1 = new PlanNode(NodeType.Predicate,
 			Map.of("column_id", "1", "condition", "=", "literal", param1), new PlanNode[]{projP});
 
 		PlanNode getS = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "benchmark/supplier.tbl"), null);
+			Map.of("file_path", "ppds_api_java/data/benchmark/supplier.tbl"), null);
 		PlanNode projS = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "0,5"), new PlanNode[]{getS});
 		PlanNode predS1 = new PlanNode(NodeType.Predicate,

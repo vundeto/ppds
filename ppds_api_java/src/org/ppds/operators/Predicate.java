@@ -4,12 +4,15 @@ import org.ppds.core.ONCIterator;
 import org.ppds.core.Record;
 
 import java.util.Map;
+import java.util.function.BiFunction;
 
 public class Predicate implements ONCIterator {
     ONCIterator[] children;
     int column_id;
     String condition;
     String literal;
+    BiFunction<Object, String, Boolean> parseFunc;
+    Record.DataType[] schema;
 
     public Predicate(Map<String, String> parameters, ONCIterator[] children) {
         column_id = Integer.parseInt(parameters.get("column_id"));
@@ -20,20 +23,26 @@ public class Predicate implements ONCIterator {
 
     @Override
     public void open() {
-        children[children.length-1].open();
+        children[children.length - 1].open();
     }
 
     @Override
     public Record next() {
-        var record = children[children.length-1].next();
-        if(record == null) return null;
-        if(parseData(record) != null) return new Record(record);
+        var record = children[children.length - 1].next();
+        if (record == null) return null;
+        if (schema == null) schema = record.getSchema();
+        if (parseFunc == null) parseFunc = getParsingFunc(schema[column_id]);
+        if (parseData_(record)) return new Record(record);
         else return next();
     }
 
     @Override
     public void close() {
-        children[children.length-1].close();
+        children[children.length - 1].close();
+    }
+
+    public boolean parseData_(Record record) {
+        return parseFunc.apply(record.get(column_id), literal);
     }
 
     public Record parseData(Record record) {
@@ -44,23 +53,24 @@ public class Predicate implements ONCIterator {
         } else if (record.getSchema()[column_id].equals(Record.DataType.FP32)) {
             var value_ = (float) record.get(column_id);
             var literal_ = Float.parseFloat(literal);
-            if (compareNums(value_, literal_))  return new Record(record);
+            if (compareNums(value_, literal_)) return new Record(record);
         } else {
             var value_ = (String) record.get(column_id);
             var literal_ = literal;
-            if (compareStrings(value_, literal_))  return new Record(record);
+            if (compareStrings(value_, literal_)) return new Record(record);
         }
         return null;
     }
 
 
-    public <T extends Object> T getLiteralValue(Record.DataType type, String literal) {
-        if (type == Record.DataType.INT32) {
-            return (T) Integer.valueOf(literal);
-        } else if (type == Record.DataType.FP32) {
-            return (T) Float.valueOf(literal);
-        } else return (T) literal;
+    public BiFunction<Object, String, Boolean> getParsingFunc(Record.DataType type) {
+        return switch (type) {
+            case INT32 -> (obj, str) -> compareNums((int) obj, Integer.parseInt(str));
+            case FP32 -> (obj, str) -> compareNums((float) obj, Float.parseFloat(str));
+            case String -> (obj, str) -> compareStrings((String) obj, str);
+        };
     }
+
 
     public boolean compareNums(int value, int literal) {
         return switch (condition) {
