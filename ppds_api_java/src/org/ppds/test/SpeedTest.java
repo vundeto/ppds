@@ -29,11 +29,11 @@ public class SpeedTest {
 	private static final int ITERATIONS = 5;
 
 	
-	public static PlanNode q1_1LQP() {
-		return q1_1LQP("1", "3");
+	public static PlanNode q11LogicalPlan() {
+		return q11LogicalPlan("1", "3");
 	}
 
-	public static PlanNode q1_1LQP(String param1, String param2) {
+	public static PlanNode q11LogicalPlan(String param1, String param2) {
 		PlanNode getLO = new PlanNode(NodeType.TableScan,
 			Map.of("file_path", "ppds_api_java/data/benchmark/lineorder.tbl"), null);
 		PlanNode projLO = new PlanNode(NodeType.Projection,
@@ -60,11 +60,11 @@ public class SpeedTest {
 		return groupBy;
 	}
 
-	public static PlanNode q1_2LQP() {
-		return q1_2LQP("26", "35");
+	public static PlanNode q12LogicalPlan() {
+		return q12LogicalPlan("26", "35");
 	}
 
-	public static PlanNode q1_2LQP(String param1, String param2) {
+	public static PlanNode q12LogicalPlan(String param1, String param2) {
 		PlanNode getLO = new PlanNode(NodeType.TableScan,
 			Map.of("file_path", "ppds_api_java/data/benchmark/lineorder.tbl"), null);
 		PlanNode projLO = new PlanNode(NodeType.Projection,
@@ -91,11 +91,11 @@ public class SpeedTest {
 		return groupBy;
 	}
 
-	public static PlanNode q2_1LQP() {
-		return q2_1LQP("MFGR#12");
+	public static PlanNode q21LogicalPlan() {
+		return q21LogicalPlan("MFGR#12");
 	}
 
-	public static PlanNode q2_1LQP(String param1) {
+	public static PlanNode q21LogicalPlan(String param1) {
 		PlanNode getLO = new PlanNode(NodeType.TableScan,
 			Map.of("file_path", "ppds_api_java/data/benchmark/lineorder.tbl"), null);
 		PlanNode projLO = new PlanNode(NodeType.Projection,
@@ -132,11 +132,11 @@ public class SpeedTest {
 		return groupBy;
 	}
 
-	static PlanNode q2_2LQP() {
-		return q2_2LQP("MFGR#2239");
+	static PlanNode q22LogicalPlan() {
+		return q22LogicalPlan("MFGR#2239");
 	}
 
-	static PlanNode q2_2LQP(String param1) {
+	static PlanNode q22LogicalPlan(String param1) {
 		PlanNode getLO = new PlanNode(NodeType.TableScan,
 			Map.of("file_path", "ppds_api_java/data/benchmark/lineorder.tbl"), null);
 		PlanNode projLO = new PlanNode(NodeType.Projection,
@@ -174,29 +174,29 @@ public class SpeedTest {
 	}
 
 	@Test
-	public void RunBenchmark() {
+	public void runBenchmark() {
 		System.out.println("### Benchmark ###");
 
 		ArrayList<Pair<String, PlanNode>> lqps = new ArrayList<>(Arrays.asList(
-				Pair.of("Q1.1", q1_1LQP()),
-				Pair.of("Q1.2", q1_2LQP()),
-				Pair.of("Q2.1", q2_1LQP()),
-				Pair.of("Q2.2", q2_2LQP())
+				Pair.of("Q1.1", q11LogicalPlan()),
+				Pair.of("Q1.2", q12LogicalPlan()),
+				Pair.of("Q2.1", q21LogicalPlan()),
+				Pair.of("Q2.2", q22LogicalPlan())
 		));
 
 		QueryProcessor proc = AQueryProcessorFactory.createQueryProcessor();
 		
-		double total_time = 0;
+		double totalTime = 0;
 		for (Pair<String, PlanNode> lqp : lqps) {
 			for (int i = 0; i < ITERATIONS; i++) {
 				long begin = System.currentTimeMillis();
 				List<Record> results = proc.executeQuery(lqp.getRight());
 				long end = System.currentTimeMillis();
 				double time = ((double)end - begin) / 1000;
-				total_time += time;
+				totalTime += time;
 				System.out.println(lqp.getLeft() + " | " + i + " | " + time + " s");
 			}
 		}
-		System.out.println("Total time: " + total_time);
+		System.out.println("Total time: " + totalTime);
 	}
 }

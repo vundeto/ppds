@@ -52,16 +52,16 @@ public class BasicTest {
 		assertEquals(results.get(0).getSchema(0), DataType.String);
 		assertEquals(results.get(0).getSchema(1), DataType.INT32);
 
-		String[] column_1 = {"def", "abc", "aab"};
-		int[] column_2 = {4, 9, 5};
+		String[] expectedKeys = {"def", "abc", "aab"};
+		int[] expectedValues = {4, 9, 5};
 
-		for (int i = 0; i < column_1.length; i++) {
+		for (int i = 0; i < expectedKeys.length; i++) {
 			boolean foundTuple = false;
 			for (Record record : results) {
 				String val1 = (String) record.get(0);
 				int val2 = (int) record.get(1);
 
-				if (column_1[i].equals(val1) && column_2[i] == val2) {
+				if (expectedKeys[i].equals(val1) && expectedValues[i] == val2) {
 					foundTuple = true;
 					break;
 				}

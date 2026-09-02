@@ -13,11 +13,10 @@ public class EdgeCases {
 
     @Test
     public void emptyFileTest(){
-        try {PlanNode emptyscan = new PlanNode(PlanNode.NodeType.TableScan,
-                Map.of("file_path", "ppds_api_java/data/basic_test/table_empty.tbl"), null);}
-        catch (Exception e){
-            e.printStackTrace();
-        }
+        PlanNode emptyScan = new PlanNode(PlanNode.NodeType.TableScan,
+                Map.of("file_path", "ppds_api_java/data/basic_test/table_empty.tbl"), null);
+        List<Record> records = AQueryProcessorFactory.createQueryProcessor().executeQuery(emptyScan);
+        assertEquals(records.size(), 0);
     }
     @Test
     public void emptyTableTest(){
@@ -30,7 +29,7 @@ public class EdgeCases {
     }
 
     @Test
-    public void BoundaryTest1(){
+    public void boundaryTest1(){
         PlanNode scan = new PlanNode(PlanNode.NodeType.TableScan,
                 Map.of("file_path", "ppds_api_java/data/basic_test/table_c.tbl"), null);
         PlanNode pred1 = new PlanNode(PlanNode.NodeType.Predicate,
@@ -39,7 +38,7 @@ public class EdgeCases {
         assertEquals(results1.size(), 5);
     }
     @Test
-    public void BoundaryTest2(){
+    public void boundaryTest2(){
         PlanNode scan = new PlanNode(PlanNode.NodeType.TableScan,
                 Map.of("file_path", "ppds_api_java/data/basic_test/table_c.tbl"), null);
         PlanNode pred2 = new PlanNode(PlanNode.NodeType.Predicate,
