@@ -7,85 +7,104 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class NestedLoopJoin implements ONCIterator{
+/**
+ * Block nested-loop equi-join kept as a fallback operator; the compiler
+ * normally emits {@link HashJoin} for equi-joins.
+ *
+ * <p>The right input is materialized once during {@code open()}; for each
+ * left record the materialized list is scanned and every match is emitted
+ * (the previous version silently dropped all but the first match per left
+ * record). Output layout matches {@link HashJoin}.</p>
+ */
+public class NestedLoopJoin implements ONCIterator {
 
-    ONCIterator left_iterator;
-    ONCIterator right_iterator;
-    int left_column;
-    int right_column;
-    List<Record> right_records;
-    Record current;
-    Record.DataType[] schema;
+    private final ONCIterator leftInput;
+    private final ONCIterator rightInput;
+    private final int leftColumnId;
+    private final int rightColumnId;
 
-    public NestedLoopJoin(Map<String, String> params, ONCIterator[] inputs) {
-        this.left_column = Integer.parseInt(params.get("left_column_id"));
-        this.right_column = Integer.parseInt(params.get("right_column_id"));
-        this.left_iterator = inputs[0];
-        this.right_iterator = inputs[1];
-        this.right_records = new ArrayList<>();
+    private final List<Record> rightRecords = new ArrayList<>();
+    private Record currentLeft;
+    private int rightIndex;
 
+    private Record.DataType[] outputSchema;
+    private Record outputRecord;
+
+    public NestedLoopJoin(Map<String, String> parameters, ONCIterator[] inputs) {
+        leftColumnId = Integer.parseInt(parameters.get("left_column_id"));
+        rightColumnId = Integer.parseInt(parameters.get("right_column_id"));
+        leftInput = inputs[0];
+        rightInput = inputs[1];
     }
+
     @Override
     public void open() {
-        left_iterator.open();
-        right_iterator.open();
-        Record right_record;
-        while ((right_record = right_iterator.next()) != null) {
-            right_records.add(right_record);
+        leftInput.open();
+        rightInput.open();
+        Record rightRecord;
+        while ((rightRecord = rightInput.next()) != null) {
+            // copy: producers may reuse the returned record instance
+            rightRecords.add(new Record(rightRecord));
         }
     }
 
     @Override
     public Record next() {
-        while ((current = left_iterator.next()) != null) {
-            for (Record right_record : right_records) {
-                if (current.get(left_column).equals(right_record.get(right_column))) {
-                    return createJoined(right_record);
+        while (true) {
+            if (currentLeft == null) {
+                currentLeft = leftInput.next();
+                if (currentLeft == null) {
+                    return null;
+                }
+                rightIndex = 0;
+            }
+            Object leftKey = currentLeft.get(leftColumnId);
+            while (rightIndex < rightRecords.size()) {
+                Record right = rightRecords.get(rightIndex++);
+                if (leftKey.equals(right.get(rightColumnId))) {
+                    return join(right);
                 }
             }
-        }
-        return null;
-    }
-    public Record createJoined(Record right) {
-        if (schema == null) createSchema(right);
-        var record = new Record(schema);
-        for (int i = 0; i < current.getSchema().length; i++) {
-            record.set(i, current.get(i));
-        }
-        var index = current.getSchema().length - 1;
-        for (int i = 0; i < right.getSchema().length; i++) {
-            if (i != right_column) {
-                index++;
-                record.set(index, right.get(i));
-            }
-        }
-        return record;
-    }
-
-
-
-    public void createSchema(Record right) {
-        schema = new Record.DataType[right.getSchema().length + current.getSchema().length - 1];
-        setData(right, current, schema, right_column);
-    }
-    private void setData(Record right, Record current, Object[] arr, int rightColumn) {
-        for (int i = 0; i < current.getSchema().length; i++) {
-            arr[i] = current.getSchema()[i];
-        }
-        var index = current.getSchema().length - 1;
-        for (int i = 0; i < right.getSchema().length; i++) {
-            if (i != rightColumn) {
-                index++;
-                arr[index] = right.getSchema()[i];
-            }
+            currentLeft = null;
         }
     }
-
 
     @Override
     public void close() {
-        left_iterator.close();
-        right_iterator.close();
+        leftInput.close();
+        rightInput.close();
+        rightRecords.clear();
     }
 
+    private Record join(Record right) {
+        if (outputRecord == null) {
+            outputSchema = buildOutputSchema(currentLeft, right);
+            outputRecord = new Record(outputSchema);
+        }
+        int leftWidth = currentLeft.getNumCols();
+        for (int i = 0; i < leftWidth; i++) {
+            outputRecord.set(i, currentLeft.get(i));
+        }
+        int position = leftWidth;
+        for (int i = 0; i < right.getNumCols(); i++) {
+            if (i != rightColumnId) {
+                outputRecord.set(position++, right.get(i));
+            }
+        }
+        return outputRecord;
+    }
+
+    private Record.DataType[] buildOutputSchema(Record left, Record right) {
+        Record.DataType[] schema = new Record.DataType[left.getNumCols() + right.getNumCols() - 1];
+        int position = 0;
+        for (int i = 0; i < left.getNumCols(); i++) {
+            schema[position++] = left.getSchema(i);
+        }
+        for (int i = 0; i < right.getNumCols(); i++) {
+            if (i != rightColumnId) {
+                schema[position++] = right.getSchema(i);
+            }
+        }
+        return schema;
+    }
 }

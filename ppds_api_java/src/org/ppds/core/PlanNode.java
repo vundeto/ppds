@@ -25,25 +25,25 @@ public class PlanNode {
 		GroupBy
 	}
 
-	protected NodeType _type;
-	protected Map<String, String> _params;
-	protected PlanNode[] _inputs;
+	protected NodeType type;
+	protected Map<String, String> parameters;
+	protected PlanNode[] inputs;
 
 	public PlanNode(NodeType type, Map<String, String> parameters, PlanNode[] inputs) {
-		_type = type;
-		_params = parameters;
-		_inputs = inputs;
+		this.type = type;
+		this.parameters = parameters;
+		this.inputs = inputs;
 	}
 
 	public NodeType getType() {
-		return _type;
+		return type;
 	}
 
 	public Map<String, String> getParameters() {
-		return _params;
+		return parameters;
 	}
 
 	public PlanNode[] getInputs() {
-		return _inputs;
+		return inputs;
 	}
 }

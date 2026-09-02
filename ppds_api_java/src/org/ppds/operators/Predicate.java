@@ -3,108 +3,121 @@ package org.ppds.operators;
 import org.ppds.core.ONCIterator;
 import org.ppds.core.Record;
 
+import java.util.List;
 import java.util.Map;
-import java.util.function.BiFunction;
 
+/**
+ * Filters records by one or more conjunctive conditions of the form
+ * {@code column <op> literal}.
+ *
+ * <p>Each condition is compiled once (literal parsed, comparison
+ * specialized to the column type) when the first record arrives, so the
+ * per-record work is a single type-specialized comparison. Qualifying
+ * records are passed through without copying.</p>
+ */
 public class Predicate implements ONCIterator {
-    ONCIterator[] children;
-    int column_id;
-    String condition;
-    String literal;
-    BiFunction<Object, String, Boolean> parseFunc;
-    Record.DataType[] schema;
+
+    private enum Condition {
+        EQUALS, NOT_EQUALS, GREATER, LESS, GREATER_EQUALS, LESS_EQUALS;
+
+        static Condition fromSymbol(String symbol) {
+            return switch (symbol) {
+                case "=" -> EQUALS;
+                case "!=" -> NOT_EQUALS;
+                case ">" -> GREATER;
+                case "<" -> LESS;
+                case ">=" -> GREATER_EQUALS;
+                case "<=" -> LESS_EQUALS;
+                default -> throw new IllegalArgumentException("Unknown condition: " + symbol);
+            };
+        }
+
+        boolean matches(int comparison) {
+            return switch (this) {
+                case EQUALS -> comparison == 0;
+                case NOT_EQUALS -> comparison != 0;
+                case GREATER -> comparison > 0;
+                case LESS -> comparison < 0;
+                case GREATER_EQUALS -> comparison >= 0;
+                case LESS_EQUALS -> comparison <= 0;
+            };
+        }
+    }
+
+    private final ONCIterator child;
+    private final int[] columnIds;
+    private final Condition[] conditions;
+    private final String[] literals;
+    /** Compiled per-condition tests, built lazily from the first record's schema. */
+    private java.util.function.Predicate<Record>[] tests;
 
     public Predicate(Map<String, String> parameters, ONCIterator[] children) {
-        column_id = Integer.parseInt(parameters.get("column_id"));
-        condition = parameters.get("condition");
-        literal = parameters.get("literal");
-        this.children = children;
+        this(List.of(parameters), children[children.length - 1]);
+    }
+
+    public Predicate(List<Map<String, String>> conjunctiveConditions, ONCIterator child) {
+        this.child = child;
+        int n = conjunctiveConditions.size();
+        columnIds = new int[n];
+        conditions = new Condition[n];
+        literals = new String[n];
+        for (int i = 0; i < n; i++) {
+            Map<String, String> parameters = conjunctiveConditions.get(i);
+            columnIds[i] = Integer.parseInt(parameters.get("column_id"));
+            conditions[i] = Condition.fromSymbol(parameters.get("condition"));
+            literals[i] = parameters.get("literal");
+        }
     }
 
     @Override
     public void open() {
-        children[children.length - 1].open();
+        child.open();
     }
 
     @Override
     public Record next() {
-        var record = children[children.length - 1].next();
-        if (record == null) return null;
-        if (schema == null) schema = record.getSchema();
-        if (parseFunc == null) parseFunc = getParsingFunc(schema[column_id]);
-        if (parseData_(record)) return new Record(record);
-        else return next();
-    }
-
-    @Override
-    public void close() {
-        children[children.length - 1].close();
-    }
-
-    public boolean parseData_(Record record) {
-        return parseFunc.apply(record.get(column_id), literal);
-    }
-
-    public Record parseData(Record record) {
-        if (record.getSchema()[column_id].equals(Record.DataType.INT32)) {
-            var value_ = (int) record.get(column_id);
-            var literal_ = Integer.parseInt(literal);
-            if (compareNums(value_, literal_)) return new Record(record);
-        } else if (record.getSchema()[column_id].equals(Record.DataType.FP32)) {
-            var value_ = (float) record.get(column_id);
-            var literal_ = Float.parseFloat(literal);
-            if (compareNums(value_, literal_)) return new Record(record);
-        } else {
-            var value_ = (String) record.get(column_id);
-            var literal_ = literal;
-            if (compareStrings(value_, literal_)) return new Record(record);
+        Record record;
+        candidates:
+        while ((record = child.next()) != null) {
+            if (tests == null) {
+                compileTests(record);
+            }
+            for (java.util.function.Predicate<Record> test : tests) {
+                if (!test.test(record)) {
+                    continue candidates;
+                }
+            }
+            return record;
         }
         return null;
     }
 
+    @Override
+    public void close() {
+        child.close();
+    }
 
-    public BiFunction<Object, String, Boolean> getParsingFunc(Record.DataType type) {
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private void compileTests(Record prototype) {
+        tests = new java.util.function.Predicate[conditions.length];
+        for (int i = 0; i < conditions.length; i++) {
+            tests[i] = compileTest(prototype.getSchema(columnIds[i]),
+                    columnIds[i], conditions[i], literals[i]);
+        }
+    }
+
+    private static java.util.function.Predicate<Record> compileTest(
+            Record.DataType type, int columnId, Condition condition, String literal) {
         return switch (type) {
-            case INT32 -> (obj, str) -> compareNums((int) obj, Integer.parseInt(str));
-            case FP32 -> (obj, str) -> compareNums((float) obj, Float.parseFloat(str));
-            case String -> (obj, str) -> compareStrings((String) obj, str);
+            case INT32 -> {
+                int intLiteral = Integer.parseInt(literal);
+                yield record -> condition.matches(Integer.compare((int) record.get(columnId), intLiteral));
+            }
+            case FP32 -> {
+                float floatLiteral = Float.parseFloat(literal);
+                yield record -> condition.matches(Float.compare((float) record.get(columnId), floatLiteral));
+            }
+            case String -> record -> condition.matches(((String) record.get(columnId)).compareTo(literal));
         };
     }
-
-
-    public boolean compareNums(int value, int literal) {
-        return switch (condition) {
-            case "=" -> value == literal;
-            case ">" -> value > literal;
-            case "<" -> value < literal;
-            case ">=" -> value >= literal;
-            case "<=" -> value <= literal;
-            default -> false;
-        };
-    }
-
-    public boolean compareNums(float value, float literal) {
-        return switch (condition) {
-            case "=" -> value == literal;
-            case ">" -> value > literal;
-            case "<" -> value < literal;
-            case ">=" -> value >= literal;
-            case "<=" -> value <= literal;
-            default -> false;
-        };
-    }
-
-    public boolean compareStrings(String value, String literal) {
-        return switch (condition) {
-            case "=" -> value.equals(literal);
-            case "!=" -> !value.equals(literal);
-            default -> false;
-        };
-    }
-
 }
-
-
-
-
-

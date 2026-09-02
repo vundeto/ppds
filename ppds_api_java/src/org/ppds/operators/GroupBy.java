@@ -3,133 +3,155 @@ package org.ppds.operators;
 import org.ppds.core.ONCIterator;
 import org.ppds.core.Record;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
+/**
+ * Hash-based aggregation with an optional grouping column.
+ *
+ * <p>Aggregates are maintained as running accumulators (count, sum, min,
+ * max) in a single pass over the input, so memory usage is proportional
+ * to the number of groups instead of the number of input records.</p>
+ *
+ * <p>With a grouping column the output is one record per group with the
+ * layout {@code (group key, aggregate)}. Without a grouping column the
+ * whole input forms one group and exactly one single-column record
+ * holding the aggregate is produced (none if the input is empty).</p>
+ */
 public class GroupBy implements ONCIterator {
-    public enum AggrType {
+
+    public enum AggregateType {
         SUM, AVG, COUNT, MAX, MIN;
+
+        static AggregateType fromString(String name) {
+            return switch (name) {
+                case "sum" -> SUM;
+                case "avg" -> AVG;
+                case "count" -> COUNT;
+                case "max" -> MAX;
+                case "min" -> MIN;
+                default -> throw new IllegalArgumentException("Unknown aggregate type: " + name);
+            };
+        }
     }
 
-    AggrType type;
-    Iterator<Object> iterator;
-    HashMap<Object, List<Object>> map;
+    /** Running per-group state; covers all supported aggregate types. */
+    private static final class Accumulator {
+        long count;
+        double sum;
+        double min = Double.POSITIVE_INFINITY;
+        double max = Double.NEGATIVE_INFINITY;
 
-    int aggr_column_id;
-    int gb_column_id;
-    ONCIterator[] children;
-    Record.DataType[] schema;
+        void add(double value) {
+            count++;
+            sum += value;
+            if (value < min) min = value;
+            if (value > max) max = value;
+        }
+    }
 
-    public GroupBy(Map<String, String> params, ONCIterator[] children_) {
-        type = getType(params.get("aggregate_type"));
-        if (params.containsKey("group_by_column_id")) gb_column_id = Integer.parseInt(params.get("group_by_column_id"));
-        else gb_column_id = -1;
-        if (params.containsKey("aggregate_column_id")) aggr_column_id= Integer.parseInt(params.get("aggregate_column_id"));
-        else aggr_column_id = -1;
-        children = children_;
-        map = null;
+    private static final int NO_COLUMN = -1;
+
+    private final ONCIterator child;
+    private final AggregateType aggregateType;
+    private final int groupByColumnId;
+    private final int aggregateColumnId;
+
+    /** Insertion-ordered for deterministic output order. */
+    private LinkedHashMap<Object, Accumulator> groups;
+    private Iterator<Map.Entry<Object, Accumulator>> groupIterator;
+    private Record.DataType aggregateInputType;
+    private Record outputRecord;
+
+    public GroupBy(Map<String, String> parameters, ONCIterator[] children) {
+        // some plans use the key "AggrType" instead of "aggregate_type"
+        String aggregateName = parameters.containsKey("aggregate_type")
+                ? parameters.get("aggregate_type") : parameters.get("AggrType");
+        aggregateType = AggregateType.fromString(aggregateName);
+        groupByColumnId = parameters.containsKey("group_by_column_id")
+                ? Integer.parseInt(parameters.get("group_by_column_id")) : NO_COLUMN;
+        aggregateColumnId = parameters.containsKey("aggregate_column_id")
+                ? Integer.parseInt(parameters.get("aggregate_column_id")) : NO_COLUMN;
+        child = children[children.length - 1];
     }
 
     @Override
     public void open() {
-        children[children.length - 1].open();
+        child.open();
     }
 
     @Override
     public Record next() {
-        if(gb_column_id == -1){
-            if(map == null)aggregateOnly();
-            var aggregate = map.keySet().iterator().next();
-            if (!iterator.hasNext()) return null;
-            var record = new Record((Record)iterator.next());
-            if(aggregate==null)return record;
-            else record.set(aggr_column_id, aggregate);
-            return record;
+        if (groups == null) {
+            consumeInput();
         }
-        if (map == null) executeGroupBy();
-        if (map.isEmpty()) return null;
-        if (!iterator.hasNext()) return null;
-        var key = iterator.next();
-        var record = new Record(schema);
-        record.set(0, key);
-        record.set(1, aggregate(map.get(key), schema[1]));
-        return record;
+        if (!groupIterator.hasNext()) {
+            return null;
+        }
+        Map.Entry<Object, Accumulator> group = groupIterator.next();
+        if (groupByColumnId == NO_COLUMN) {
+            outputRecord.set(0, aggregateResult(group.getValue()));
+        } else {
+            outputRecord.set(0, group.getKey());
+            outputRecord.set(1, aggregateResult(group.getValue()));
+        }
+        return outputRecord;
     }
 
     @Override
     public void close() {
-        children[children.length - 1].close();
-    }
-    public void aggregateOnly(){
-        List<Object> records = new ArrayList<>();
-        List<Object> columns = new ArrayList<>();
-        Record record;
-        while ((record = children[children.length - 1].next()) != null) {
-            records.add(record);
-            columns.add(record.get(aggr_column_id));
-        }
-        var r = (Record) records.get(0);
-        var aggregate = aggregate(columns, r.getSchema(aggr_column_id));
-        map = new HashMap<>();
-        map.put(aggregate, records);
-        iterator = map.get(aggregate).iterator();
+        child.close();
     }
 
-    public void executeGroupBy() {
-        map = new HashMap<>();
+    /** Builds all group accumulators in a single pass over the input. */
+    private void consumeInput() {
+        groups = new LinkedHashMap<>();
         Record record;
-        while ((record = children[children.length - 1].next()) != null) {
-            var key = record.get(gb_column_id);
-            var value = record.get(aggr_column_id);
-            if (schema == null) schema = createSchema(record);
-            if (!map.containsKey(key)) {
-                map.put(key, new ArrayList<>());
-                map.get(key).add(value);
+        while ((record = child.next()) != null) {
+            if (outputRecord == null) {
+                aggregateInputType = record.getSchema(aggregateColumnId);
+                outputRecord = new Record(buildOutputSchema(record));
+            }
+            Object key = groupByColumnId == NO_COLUMN ? Boolean.TRUE : record.get(groupByColumnId);
+            Accumulator accumulator = groups.computeIfAbsent(key, k -> new Accumulator());
+            Object value = record.get(aggregateColumnId);
+            if (value instanceof Number number) {
+                accumulator.add(number.doubleValue());
             } else {
-                map.get(key).add(value);
+                accumulator.count++;
             }
         }
-        iterator = map.keySet().iterator();
+        groupIterator = groups.entrySet().iterator();
     }
 
-    private Record.DataType[] createSchema(Record record) {
-        var schema = new Record.DataType[2];
-        schema[0] = record.getSchema(gb_column_id);
-        if (type.equals(AggrType.AVG)) schema[1] = Record.DataType.FP32;
-        else if (type.equals(AggrType.MAX) || type.equals(AggrType.MIN) || type.equals(AggrType.SUM))
-            schema[1] = record.getSchema(aggr_column_id);
-        else schema[1] = Record.DataType.INT32;
-        return schema;
-    }
-
-
-    private Object aggregate(List<Object> values, Record.DataType dataType) {
-        if (dataType == Record.DataType.FP32) {
-            return switch (type) {
-                case SUM -> values.stream().map(o -> (float) o).reduce((float) 0, Float::sum);
-                case AVG -> values.stream().map(o -> (float) o).reduce((float) 0, Float::sum) / values.size();
-                case COUNT -> values.size();
-                case MAX -> values.stream().map(o -> (float) o).max(Float::compareTo).get();
-                case MIN -> values.stream().map(o -> (float) o).min(Float::compareTo).get();
-            };
-        } else if (dataType == Record.DataType.INT32) {
-            return switch (type) {
-                case SUM -> values.stream().map(o -> (int) o).reduce(0, Integer::sum);
-                case AVG -> values.stream().map(o -> (int) o).reduce(0, Integer::sum) / values.size();
-                case COUNT -> values.size();
-                case MAX -> values.stream().map(o -> (int) o).max(Integer::compareTo).get();
-                case MIN -> values.stream().map(o -> (int) o).min(Integer::compareTo).get();
-            };
-        } else return null;
-    }
-
-    public AggrType getType(String str) {
-        return switch (str) {
-            case "sum" -> AggrType.SUM;
-            case "avg" -> AggrType.AVG;
-            case "count" -> AggrType.COUNT;
-            case "max" -> AggrType.MAX;
-            case "min" -> AggrType.MIN;
-            default -> null;
+    private Object aggregateResult(Accumulator accumulator) {
+        return switch (aggregateType) {
+            case COUNT -> (int) accumulator.count;
+            case AVG -> (float) (accumulator.sum / accumulator.count);
+            case SUM -> toInputType(accumulator.sum);
+            case MIN -> toInputType(accumulator.min);
+            case MAX -> toInputType(accumulator.max);
         };
+    }
+
+    private Object toInputType(double value) {
+        return switch (aggregateInputType) {
+            case INT32 -> (int) value;
+            case FP32 -> (float) value;
+            case String -> null; // non-numeric columns cannot be summed/compared
+        };
+    }
+
+    private Record.DataType[] buildOutputSchema(Record record) {
+        Record.DataType aggregateOutputType = switch (aggregateType) {
+            case COUNT -> Record.DataType.INT32;
+            case AVG -> Record.DataType.FP32;
+            case SUM, MIN, MAX -> aggregateInputType;
+        };
+        if (groupByColumnId == NO_COLUMN) {
+            return new Record.DataType[]{aggregateOutputType};
+        }
+        return new Record.DataType[]{record.getSchema(groupByColumnId), aggregateOutputType};
     }
 }
