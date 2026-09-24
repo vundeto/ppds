@@ -23,45 +23,45 @@ public class Record {
 		String
 	}
 	
-	protected DataType[] _schema;
-	protected Object[] _data;
+	protected DataType[] schema;
+	protected Object[] data;
 
 	public Record(DataType[] schema) {
-		_schema = schema;
-		_data = new Object[schema.length];
+		this.schema = schema;
+		this.data = new Object[schema.length];
 	}
 	
 	public Record(Record that) {
 		// deep copy of passed record arrays
-		_schema = that._schema.clone();
-		_data = that._data.clone();
+		schema = that.schema.clone();
+		data = that.data.clone();
 	}
 	
 	public Object get(int index) {
-		return _data[index];
+		return data[index];
 	}
 
 	public void set(int index, Object o) {
-		_data[index] = o;
+		data[index] = o;
 	}
 
 	public int getNumCols() {
-		return _schema.length;
+		return schema.length;
 	}
 
 	public DataType[] getSchema() {
-		return _schema;
+		return schema;
 	}
 	
 	public DataType getSchema(int index) {
-		return _schema[index];
+		return schema[index];
 	}
 
 	@Override
 	public String toString() {
 		return "Record{" +
-				"_schema=" + Arrays.toString(_schema) +
-				", _data=" + Arrays.toString(_data) +
+				"schema=" + Arrays.toString(schema) +
+				", data=" + Arrays.toString(data) +
 				'}';
 	}
 }

@@ -14,28 +14,27 @@ limitations under the License.
 
 package org.ppds.test;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
 import org.ppds.core.PlanNode;
 import org.ppds.core.PlanNode.NodeType;
 import org.ppds.core.QueryProcessor;
-import org.ppds.core.Record;
-import org.apache.commons.lang3.tuple.Pair;
+
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 
 public class SpeedTest {
 	private static final int ITERATIONS = 5;
 
 	
-	public static PlanNode q1_1LQP() {
-		return q1_1LQP("1", "3");
+	public static PlanNode q11LogicalPlan() {
+		return q11LogicalPlan("1", "3");
 	}
 
-	public static PlanNode q1_1LQP(String param1, String param2) {
+	public static PlanNode q11LogicalPlan(String param1, String param2) {
 		PlanNode getLO = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "ppds_api_java/data/benchmark/lineorder.tbl"), null);
+			Map.of("file_path", TestTables.LINEORDER), null);
 		PlanNode projLO = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "5,8,11,13"), new PlanNode[]{getLO});
 		PlanNode predLO1 = new PlanNode(NodeType.Predicate,
@@ -47,7 +46,7 @@ public class SpeedTest {
 
 
 		PlanNode getD = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "ppds_api_java/data/benchmark/date.tbl"), null);
+			Map.of("file_path", TestTables.DATE), null);
 		PlanNode projD = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "0,4"), new PlanNode[]{getD});
 		PlanNode predD1 = new PlanNode(NodeType.Predicate,
@@ -60,13 +59,13 @@ public class SpeedTest {
 		return groupBy;
 	}
 
-	public static PlanNode q1_2LQP() {
-		return q1_2LQP("26", "35");
+	public static PlanNode q12LogicalPlan() {
+		return q12LogicalPlan("26", "35");
 	}
 
-	public static PlanNode q1_2LQP(String param1, String param2) {
+	public static PlanNode q12LogicalPlan(String param1, String param2) {
 		PlanNode getLO = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "ppds_api_java/data/benchmark/lineorder.tbl"), null);
+			Map.of("file_path", TestTables.LINEORDER), null);
 		PlanNode projLO = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "5,8,11,13"), new PlanNode[]{getLO});
 		PlanNode predLO1 = new PlanNode(NodeType.Predicate,
@@ -79,7 +78,7 @@ public class SpeedTest {
 			Map.of("column_id", "1", "condition", ">", "literal", param2), new PlanNode[]{predLO3});
 
 		PlanNode getD = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "ppds_api_java/data/benchmark/date.tbl"), null);
+			Map.of("file_path", TestTables.DATE), null);
 		PlanNode projD = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "0,5"), new PlanNode[]{getD});
 		PlanNode predD1 = new PlanNode(NodeType.Predicate,
@@ -91,30 +90,30 @@ public class SpeedTest {
 		return groupBy;
 	}
 
-	public static PlanNode q2_1LQP() {
-		return q2_1LQP("MFGR#12");
+	public static PlanNode q21LogicalPlan() {
+		return q21LogicalPlan("MFGR#12");
 	}
 
-	public static PlanNode q2_1LQP(String param1) {
+	public static PlanNode q21LogicalPlan(String param1) {
 		PlanNode getLO = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "ppds_api_java/data/benchmark/lineorder.tbl"), null);
+			Map.of("file_path", TestTables.LINEORDER), null);
 		PlanNode projLO = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "3,4,5,12"), new PlanNode[]{getLO});
 
 		PlanNode getD = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "ppds_api_java/data/benchmark/date.tbl"), null);
+			Map.of("file_path", TestTables.DATE), null);
 		PlanNode projD = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "0,4"), new PlanNode[]{getD});
 
 		PlanNode getP = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "ppds_api_java/data/benchmark/part.tbl"), null);
+			Map.of("file_path", TestTables.PART), null);
 		PlanNode projP = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "0,3"), new PlanNode[]{getP});
 		PlanNode predP1 = new PlanNode(NodeType.Predicate,
 			Map.of("column_id", "1", "condition", "=", "literal", param1), new PlanNode[]{projP});
 
 		PlanNode getS = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "ppds_api_java/data/benchmark/supplier.tbl"), null);
+			Map.of("file_path", TestTables.SUPPLIER), null);
 		PlanNode projS = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "0,5"), new PlanNode[]{getS});
 		PlanNode predS1 = new PlanNode(NodeType.Predicate,
@@ -132,30 +131,30 @@ public class SpeedTest {
 		return groupBy;
 	}
 
-	static PlanNode q2_2LQP() {
-		return q2_2LQP("MFGR#2239");
+	static PlanNode q22LogicalPlan() {
+		return q22LogicalPlan("MFGR#2239");
 	}
 
-	static PlanNode q2_2LQP(String param1) {
+	static PlanNode q22LogicalPlan(String param1) {
 		PlanNode getLO = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "ppds_api_java/data/benchmark/lineorder.tbl"), null);
+			Map.of("file_path", TestTables.LINEORDER), null);
 		PlanNode projLO = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "3,4,5,12"), new PlanNode[]{getLO});
 
 		PlanNode getD = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "ppds_api_java/data/benchmark/date.tbl"), null);
+			Map.of("file_path", TestTables.DATE), null);
 		PlanNode projD = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "0,4"), new PlanNode[]{getD});
 
 		PlanNode getP = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "ppds_api_java/data/benchmark/part.tbl"), null);
+			Map.of("file_path", TestTables.PART), null);
 		PlanNode projP = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "0,4"), new PlanNode[]{getP});
 		PlanNode predP1 = new PlanNode(NodeType.Predicate,
 			Map.of("column_id", "1", "condition", "=", "literal", param1), new PlanNode[]{projP});
 
 		PlanNode getS = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "ppds_api_java/data/benchmark/supplier.tbl"), null);
+			Map.of("file_path", TestTables.SUPPLIER), null);
 		PlanNode projS = new PlanNode(NodeType.Projection,
 			Map.of("column_ids", "0,5"), new PlanNode[]{getS});
 		PlanNode predS1 = new PlanNode(NodeType.Predicate,
@@ -174,29 +173,29 @@ public class SpeedTest {
 	}
 
 	@Test
-	public void RunBenchmark() {
+	public void runBenchmark() {
 		System.out.println("### Benchmark ###");
 
 		ArrayList<Pair<String, PlanNode>> lqps = new ArrayList<>(Arrays.asList(
-				Pair.of("Q1.1", q1_1LQP()),
-				Pair.of("Q1.2", q1_2LQP()),
-				Pair.of("Q2.1", q2_1LQP()),
-				Pair.of("Q2.2", q2_2LQP())
+				Pair.of("Q1.1", q11LogicalPlan()),
+				Pair.of("Q1.2", q12LogicalPlan()),
+				Pair.of("Q2.1", q21LogicalPlan()),
+				Pair.of("Q2.2", q22LogicalPlan())
 		));
 
 		QueryProcessor proc = AQueryProcessorFactory.createQueryProcessor();
 		
-		double total_time = 0;
+		double totalTime = 0;
 		for (Pair<String, PlanNode> lqp : lqps) {
 			for (int i = 0; i < ITERATIONS; i++) {
 				long begin = System.currentTimeMillis();
-				List<Record> results = proc.executeQuery(lqp.getRight());
+				proc.executeQuery(lqp.getRight());
 				long end = System.currentTimeMillis();
 				double time = ((double)end - begin) / 1000;
-				total_time += time;
+				totalTime += time;
 				System.out.println(lqp.getLeft() + " | " + i + " | " + time + " s");
 			}
 		}
-		System.out.println("Total time: " + total_time);
+		System.out.println("Total time: " + totalTime);
 	}
 }

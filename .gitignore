@@ -1,0 +1,9 @@
+*.iml
+out/
+target/
+*.class
+
+# SSB generator checkout and generated scale-factor 1 tables
+ppds_api_java/data/ssb-dbgen/
+ppds_api_java/data/benchmark/*.tbl
+/.idea/

@@ -6,41 +6,62 @@ import org.ppds.core.Record;
 import java.util.Arrays;
 import java.util.Map;
 
-public class Projection implements ONCIterator{
-    ONCIterator[] children;
-    int[] column_ids;
+/**
+ * Projects the input onto the configured columns, in the given order.
+ *
+ * <p>The output schema is derived once from the first record and the
+ * output record is reused across {@code next()} calls.</p>
+ */
+public class Projection implements ONCIterator {
+
+    private final ONCIterator child;
+    private final int[] columnIds;
+
+    private Record.DataType[] outputSchema;
+    private Record outputRecord;
 
     public Projection(Map<String, String> parameters, ONCIterator[] children) {
-        column_ids = Arrays.stream(parameters.get("column_ids").trim().split(","))
-            .mapToInt(Integer::parseInt)
-            .toArray();
-        this.children = children;
+        columnIds = parseColumnIds(parameters);
+        child = children[children.length - 1];
+    }
+
+    public static int[] parseColumnIds(Map<String, String> parameters) {
+        return Arrays.stream(parameters.get("column_ids").trim().split(","))
+                .mapToInt(Integer::parseInt)
+                .toArray();
     }
 
     @Override
     public void open() {
-        children[children.length-1].open();
+        child.open();
     }
 
     @Override
     public Record next() {
-        var record = children[children.length-1].next();
-        if(record == null) return null;
-        var proj = new Record(getSchema(record));
-        for(int i = 0; i< column_ids.length; i++) {
-            proj.set(i, record.get(column_ids[i]));
+        Record record = child.next();
+        if (record == null) {
+            return null;
         }
-        return proj;
-    }
-    public Record.DataType[] getSchema(Record record) {
-        var schema = new Record.DataType[column_ids.length];
-        for (int i = 0; i < schema.length; i++) {
-            schema[i] = record.getSchema(column_ids[i]);
+        if (outputRecord == null) {
+            outputSchema = buildOutputSchema(record);
+            outputRecord = new Record(outputSchema);
         }
-        return schema;
+        for (int i = 0; i < columnIds.length; i++) {
+            outputRecord.set(i, record.get(columnIds[i]));
+        }
+        return outputRecord;
     }
+
     @Override
     public void close() {
-        children[0].close();
+        child.close();
+    }
+
+    private Record.DataType[] buildOutputSchema(Record record) {
+        Record.DataType[] schema = new Record.DataType[columnIds.length];
+        for (int i = 0; i < schema.length; i++) {
+            schema[i] = record.getSchema(columnIds[i]);
+        }
+        return schema;
     }
 }

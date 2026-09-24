@@ -30,19 +30,7 @@ public class BasicTest {
 
 	@Test
 	public void runThrough() {
-		PlanNode scan = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "ppds_api_java/data/basic_test/table_a.tbl"), null);
-		PlanNode pred = new PlanNode(NodeType.Predicate,
-			Map.of("column_id", "0", "condition", ">", "literal", "1"), new PlanNode[]{scan});
-		PlanNode scan2 = new PlanNode(NodeType.TableScan,
-			Map.of("file_path", "ppds_api_java/data/basic_test/table_b.tbl"), null);
-		PlanNode proj = new PlanNode(NodeType.Projection,
-			Map.of("column_ids", "0"), new PlanNode[]{scan2});
-		PlanNode join = new PlanNode(NodeType.EquiJoin,
-			Map.of("left_column_id", "1", "right_column_id", "0"), new PlanNode[]{pred, proj});
-		PlanNode groupBy = new PlanNode(NodeType.GroupBy,
-			Map.of("group_by_column_id", "2", "aggregate_column_id", "0", "AggrType", "max"),
-			new PlanNode[]{join});
+		PlanNode groupBy = getGroupBy();
 
 		List<Record> results = AQueryProcessorFactory.createQueryProcessor().executeQuery(groupBy);
 		assertEquals(results.size(), 3);
@@ -52,21 +40,37 @@ public class BasicTest {
 		assertEquals(results.get(0).getSchema(0), DataType.String);
 		assertEquals(results.get(0).getSchema(1), DataType.INT32);
 
-		String[] column_1 = {"def", "abc", "aab"};
-		int[] column_2 = {4, 9, 5};
+		String[] expectedKeys = {"def", "abc", "aab"};
+		int[] expectedValues = {4, 9, 5};
 
-		for (int i = 0; i < column_1.length; i++) {
+		for (int i = 0; i < expectedKeys.length; i++) {
 			boolean foundTuple = false;
 			for (Record record : results) {
 				String val1 = (String) record.get(0);
 				int val2 = (int) record.get(1);
 
-				if (column_1[i].equals(val1) && column_2[i] == val2) {
+				if (expectedKeys[i].equals(val1) && expectedValues[i] == val2) {
 					foundTuple = true;
 					break;
 				}
 			}
 			assertTrue(foundTuple);
 		}
+	}
+
+	private static PlanNode getGroupBy() {
+		PlanNode scan = new PlanNode(NodeType.TableScan,
+			Map.of("file_path", TestTables.TABLE_A), null);
+		PlanNode pred = new PlanNode(NodeType.Predicate,
+			Map.of("column_id", "0", "condition", ">", "literal", "1"), new PlanNode[]{scan});
+		PlanNode scan2 = new PlanNode(NodeType.TableScan,
+			Map.of("file_path", TestTables.TABLE_B), null);
+		PlanNode proj = new PlanNode(NodeType.Projection,
+			Map.of("column_ids", "0"), new PlanNode[]{scan2});
+		PlanNode join = new PlanNode(NodeType.EquiJoin,
+			Map.of("left_column_id", "1", "right_column_id", "0"), new PlanNode[]{pred, proj});
+		return new PlanNode(NodeType.GroupBy,
+			Map.of("group_by_column_id", "2", "aggregate_column_id", "0", "AggrType", "max"),
+			new PlanNode[]{join});
 	}
 }
