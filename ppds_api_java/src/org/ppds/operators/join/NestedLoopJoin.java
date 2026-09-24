@@ -1,4 +1,4 @@
-package org.ppds.operators;
+package org.ppds.operators.join;
 
 import org.ppds.core.ONCIterator;
 import org.ppds.core.Record;
@@ -16,7 +16,7 @@ import java.util.Map;
  * (the previous version silently dropped all but the first match per left
  * record). Output layout matches {@link HashJoin}.</p>
  */
-public class NestedLoopJoin implements ONCIterator {
+public class NestedLoopJoin implements Join {
 
     private final ONCIterator leftInput;
     private final ONCIterator rightInput;
@@ -27,7 +27,6 @@ public class NestedLoopJoin implements ONCIterator {
     private Record currentLeft;
     private int rightIndex;
 
-    private Record.DataType[] outputSchema;
     private Record outputRecord;
 
     public NestedLoopJoin(Map<String, String> parameters, ONCIterator[] inputs) {
@@ -35,6 +34,26 @@ public class NestedLoopJoin implements ONCIterator {
         rightColumnId = Integer.parseInt(parameters.get("right_column_id"));
         leftInput = inputs[0];
         rightInput = inputs[1];
+    }
+
+    @Override
+    public int getRightColumnId() {
+        return rightColumnId;
+    }
+
+    @Override
+    public Record getCurrentLeft() {
+        return currentLeft;
+    }
+
+    @Override
+    public Record getOutputRecord() {
+        return outputRecord;
+    }
+
+    @Override
+    public void setOutputRecord(Record outputRecord) {
+        this.outputRecord = outputRecord;
     }
 
     @Override
@@ -74,37 +93,5 @@ public class NestedLoopJoin implements ONCIterator {
         leftInput.close();
         rightInput.close();
         rightRecords.clear();
-    }
-
-    private Record join(Record right) {
-        if (outputRecord == null) {
-            outputSchema = buildOutputSchema(currentLeft, right);
-            outputRecord = new Record(outputSchema);
-        }
-        int leftWidth = currentLeft.getNumCols();
-        for (int i = 0; i < leftWidth; i++) {
-            outputRecord.set(i, currentLeft.get(i));
-        }
-        int position = leftWidth;
-        for (int i = 0; i < right.getNumCols(); i++) {
-            if (i != rightColumnId) {
-                outputRecord.set(position++, right.get(i));
-            }
-        }
-        return outputRecord;
-    }
-
-    private Record.DataType[] buildOutputSchema(Record left, Record right) {
-        Record.DataType[] schema = new Record.DataType[left.getNumCols() + right.getNumCols() - 1];
-        int position = 0;
-        for (int i = 0; i < left.getNumCols(); i++) {
-            schema[position++] = left.getSchema(i);
-        }
-        for (int i = 0; i < right.getNumCols(); i++) {
-            if (i != rightColumnId) {
-                schema[position++] = right.getSchema(i);
-            }
-        }
-        return schema;
     }
 }

@@ -1,10 +1,11 @@
 package org.ppds.core;
 
 import org.ppds.operators.GroupBy;
-import org.ppds.operators.HashJoin;
+import org.ppds.operators.join.HashJoin;
 import org.ppds.operators.Predicate;
 import org.ppds.operators.Projection;
 import org.ppds.operators.TableScan;
+import org.ppds.test.TestTables;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -100,7 +101,7 @@ public class Compiler extends QueryProcessor {
 
     public static PlanNode q11LogicalPlan(String param1, String param2) {
         PlanNode getLO = new PlanNode(PlanNode.NodeType.TableScan,
-                Map.of("file_path", "ppds_api_java/data/benchmark/lineorder.tbl"), null);
+                Map.of("file_path", TestTables.LINEORDER), null);
         PlanNode projLO = new PlanNode(PlanNode.NodeType.Projection,
                 Map.of("column_ids", "5,8,11,13"), new PlanNode[]{getLO});
         PlanNode predLO1 = new PlanNode(PlanNode.NodeType.Predicate,
@@ -111,7 +112,7 @@ public class Compiler extends QueryProcessor {
                 Map.of("column_id", "1", "condition", ">", "literal", "25"), new PlanNode[]{predLO2});
 
         PlanNode getD = new PlanNode(PlanNode.NodeType.TableScan,
-                Map.of("file_path", "ppds_api_java/data/benchmark/date.tbl"), null);
+                Map.of("file_path", TestTables.DATE), null);
         PlanNode projD = new PlanNode(PlanNode.NodeType.Projection,
                 Map.of("column_ids", "0,4"), new PlanNode[]{getD});
         PlanNode predD1 = new PlanNode(PlanNode.NodeType.Predicate,
